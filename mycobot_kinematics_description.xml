@@ -1,0 +1,8 @@
+<library path="lib/libmycobot_kinematics_plugin">
+  <class name="mycobot_kinematics/MycobotKinematicsPlugin" type="mycobot_kinematics::MycobotKinematicsPlugin" base_class_type="kinematics::KinematicsBase">
+    <description>
+      A implementation of mycobot kinematics and its moveit plugin
+    </description>
+  </class>
+</library>
+
