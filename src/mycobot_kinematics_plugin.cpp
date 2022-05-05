@@ -237,32 +237,41 @@ bool MycobotKinematicsPlugin::searchPositionIK(const std::vector<geometry_msgs::
   std::vector<std::vector<double>> solutions;
   
   if (!getAllIK(pose, solutions))
-  {
+  { 
+    std::cout << "Failed to find solution" << std::endl;
     ROS_DEBUG_STREAM_NAMED(LOGNAME, "Failed to find IK solution");
     error_code.val = error_code.NO_IK_SOLUTION;
     return false;
   }
   ROS_DEBUG_STREAM_NAMED(LOGNAME, "Now have " << solutions.size() << " potential solutions");
+
+  std::vector<SolDist> Dist_solutions;
+
+  for (auto& sol : solutions)
+  {
+    Dist_solutions.push_back({ sol, distance(sol, ik_seed_state) });
+  }
+
   // sort solutions by distance to seed state
-  std::sort(solutions.begin(), solutions.end());
+  std::sort(Dist_solutions.begin(), Dist_solutions.end());
  
   if (!solution_callback)
   {
-    solution = solutions[0];
+    solution = Dist_solutions.front().value;
     return true;
   }
 
-  for (auto sol : solutions)
+  for (auto sol : Dist_solutions)
   {
-    solution_callback(ik_poses[0], sol, error_code);
+    solution_callback(ik_poses[0], sol.value, error_code);
     if (error_code.val == moveit_msgs::MoveItErrorCodes::SUCCESS)
     {
-      solution = sol;
+      solution = sol.value;
       ROS_DEBUG_STREAM_NAMED(LOGNAME, "Solution passes callback");
       return true;
     }
   }
-
+  
   ROS_DEBUG_STREAM_NAMED(LOGNAME, "No solution fullfilled requirements of solution callback");
   return false;
 }
@@ -278,6 +287,7 @@ bool MycobotKinematicsPlugin::getPositionIK(const std::vector<geometry_msgs::Pos
     return false;
   }
   Eigen::Isometry3d pose;
+  pose = base_.inverse()*pose;
   tf::poseMsgToEigen(ik_poses[0], pose);
   return getAllIK(pose, solutions);
 }
@@ -319,7 +329,7 @@ double MycobotKinematicsPlugin::distance(const std::vector<double>& a, const std
 {
   double cost = 0.0;
   for (size_t i = 0; i < a.size(); ++i)
-    cost += std::abs(b[i] - a[i]);
+    cost += std::fabs(b[i] - a[i]);
   return cost;
 }
 
@@ -364,6 +374,7 @@ bool MycobotKinematicsPlugin::getIK(const Eigen::Isometry3d& pose, const std::ve
 {
   // Descartes Robot Model interface calls for 'closest' point to seed position
   std::vector<std::vector<double>> joint_poses;
+  
   if (!getAllIK(pose, joint_poses))
     return false;
   // Find closest joint pose; getAllIK() does isValid checks already

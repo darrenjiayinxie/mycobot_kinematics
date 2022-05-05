@@ -5,16 +5,18 @@ namespace mycobot_kinematics {
 
     const double PI = M_PI;
     const double INVALID_TAG = 100;
-    const double THRESHOLD_ZERO = 1e-6;
+    const double THRESHOLD_ZERO = 1e-8;
     // modified DH parameters of mycobot (m)
     const double a2 = -0.1104; const double a3 = -0.096;
     const double d1 = 0.13156; const double d4 = 0.06462;
     const double d5 = 0.07318; const double d6 = 0.0456;
-    
+    int SIGN(double x) {
+      return (x > 0) - (x < 0);
+    }
 
     // joint limits of mycobot 
-    const std::vector<double> l_joint = {0, PI*-165/180, PI*-165/180 - PI/2, PI*-165/180, PI*-165/180 - PI/2, PI*-165/180 + PI/2, PI*-175/180};
-    const std::vector<double> u_joint = {0, PI*165/180,  PI*165/180 - PI/2,  PI*165/180,  PI*165/180 - PI/2,  PI*165/180 + PI/2,  PI*175/180};
+    //const std::vector<double> l_joint = {0, PI*-165/180, PI*-165/180, PI*-165/180, PI*-165/180, PI*-165/180, PI*-175/180};
+    //const std::vector<double> u_joint = {0, PI*165/180,  PI*165/180,  PI*165/180,  PI*165/180,  PI*165/180,  PI*175/180};
 
 
     void wrapTo2Pi(double& angle){
@@ -22,10 +24,17 @@ namespace mycobot_kinematics {
         if (angle < 0)
             angle += 2*PI;
 
-        
+         // round up the boundary
+        if (fabs(angle - 2*PI) < THRESHOLD_ZERO) {
+            angle = - 2*PI;
+        }
+
+        if (fabs(angle) < THRESHOLD_ZERO) {
+            angle = 0;
+        }
         
     }
-    void wrapToPi(double& angle, int i) {
+    void wrapToPi(double& angle) {
 
         angle = fmod(angle + PI, 2*PI);
         if (angle < 0)
@@ -42,54 +51,12 @@ namespace mycobot_kinematics {
         }
 
         // check valid range of joint i
-        if (angle > u_joint[i] || angle < l_joint[i]) {
-            angle = INVALID_TAG;
-        }
+        //if (angle > u_joint[i] || angle < l_joint[i]) {
+        //    angle = INVALID_TAG;
+        //}
     }
     
-    void wrapTohalfPi(double& angle, int i) {
-
-        angle = fmod(angle + 0.5*PI, 2*PI);
-        if (angle < 0)
-            angle += 2*PI;
-        angle -= 0.5*PI;
-
-         // round up the boundary
-        if (fabs(angle - 0.5*PI) < THRESHOLD_ZERO) {
-            angle = - 1.5*PI;
-        }
-
-        if (fabs(angle) < THRESHOLD_ZERO) {
-            angle = 0;
-        }
-
-        // check valid range of joint i
-        if (angle > u_joint[i] || angle < l_joint[i]) {
-            angle = INVALID_TAG;
-        }
-    }
-
-    void wrapToOnehalfPi(double& angle, int i) {
-
-        angle = fmod(angle + 1.5*PI, 2*PI);
-        if (angle < 0)
-            angle += 2*PI;
-        angle -= 1.5*PI;
-
-         // round up the boundary
-        if (fabs(angle - 1.5*PI) < THRESHOLD_ZERO) {
-            angle = - 1.5*PI;
-        }
-
-        if (fabs(angle) < THRESHOLD_ZERO) {
-            angle = 0;
-        }
-
-        // check valid range of joint i
-        if (angle > u_joint[i] || angle < l_joint[i]) {
-            angle = INVALID_TAG;
-        }
-    }
+    
        
     
     void forward(const std::vector<double>& q, Eigen::Isometry3d& T) {
@@ -131,9 +98,15 @@ namespace mycobot_kinematics {
                 double p05x = -T(0,2)*d6 + T(0,3),  
                        p05y = -T(1,2)*d6 + T(1,3);
                 double p05xy = sqrt(p05x*p05x + p05y*p05y);
-                double term = d4/p05xy;
-
+                
+                double term;
                 // edge case
+                if (fabs(p05xy) < THRESHOLD_ZERO) {
+                    term = -SIGN(d4)*SIGN(p05xy);
+                }else {
+                    term = d4/p05xy;
+                }
+                
                 if (fabs(term) - 1 > THRESHOLD_ZERO) {
                     // no solution exists
                     return theta;
@@ -157,8 +130,8 @@ namespace mycobot_kinematics {
                 }
 
                 // wrap theta to [-PI, PI] and validate its range
-                wrapToPi(theta[0], step + 1);
-                wrapToPi(theta[1], step + 1);
+                wrapTo2Pi(theta[0]);
+                wrapTo2Pi(theta[1]);
 
                 // check whether two solution are same
                 if (fabs(theta[0] - theta[1]) < THRESHOLD_ZERO) {
@@ -172,12 +145,14 @@ namespace mycobot_kinematics {
             case 1:
             {   
                 // compute the input
-                double term = (T(0,3)*sin(candidate[0]) - T(1,3)*cos(candidate[0]) -d4)/d6;
-                
+                double numer = (T(0,3)*sin(candidate[0]) - T(1,3)*cos(candidate[0]) -d4);
+                double term;
                 // edge cases
-                if (fabs(term) - 1 > THRESHOLD_ZERO) {
-                    return theta;
-                }
+                
+                if(fabs(fabs(numer) - fabs(d6)) < THRESHOLD_ZERO)
+                    term = SIGN(numer) * SIGN(d6);
+                else
+                    term = numer / d6;
                 /*compute theta: 
                     (1) acos on boundary of 1
                     (2) acos on boundary of -1
@@ -196,8 +171,8 @@ namespace mycobot_kinematics {
                         
                 
                 // wrap theta to [-0.5*PI, 1.5*PI) and validate its range
-                wrapToOnehalfPi(theta[0], step + 1);
-                wrapToOnehalfPi(theta[1], step + 1);
+                wrapTo2Pi(theta[0]);
+                wrapTo2Pi(theta[1]);
                 
                 // check whether two solution are same
                 if (fabs(theta[0] - theta[1]) < THRESHOLD_ZERO) {
@@ -228,16 +203,13 @@ namespace mycobot_kinematics {
                     return theta;
                 }
 
-                if (fabs(term1) < THRESHOLD_ZERO && fabs(term2) < THRESHOLD_ZERO) {
-                    return theta;
-                }
 
                 // compute theta
-                theta[0] = atan2(term1/sin(candidate[1]), term2/sin(candidate[1]));
+                theta[0] = atan2(term1*SIGN(sin(candidate[1])), term2*SIGN(sin(candidate[1])));
                 
 
                 // wrap theta to [-PI, PI) and validate its range
-                wrapToPi(theta[0], step + 1);
+                wrapTo2Pi(theta[0]);
 
                 break;
 
@@ -278,8 +250,8 @@ namespace mycobot_kinematics {
                 }
 
                 // wrap theta to [-PI, PI) and validate its range
-                wrapToPi(theta[0], step + 1);
-                wrapToPi(theta[1], step + 1);
+                wrapTo2Pi(theta[0]);
+                wrapTo2Pi(theta[1]);
 
                 // check whether two solution are same
                 if (fabs(theta[0] - theta[1]) < THRESHOLD_ZERO) {
@@ -323,7 +295,7 @@ namespace mycobot_kinematics {
 
 
                 // wrap theta to [-1.5*PI, 0.5*PI) and validate its range
-                wrapTohalfPi(theta[0], step + 1);
+                wrapTo2Pi(theta[0]);
 
                 break;
             }
@@ -348,7 +320,7 @@ namespace mycobot_kinematics {
                 theta[0] = atan2(X34y, X34x);
 
                 // wrap theta to [-1.5*PI, 0.5PI) and validate its range
-                wrapTohalfPi(theta[0], step + 1);
+                wrapTo2Pi(theta[0]);
 
                 break;
             }
@@ -360,6 +332,21 @@ namespace mycobot_kinematics {
 
         // when step == 6, add candidate to solutions and return
         if (step == 6) {
+            //theta 1
+            wrapToPi(candidate[0]);
+            //theta 2
+            candidate[4] += PI/2;
+            wrapToPi(candidate[4]);
+            //theta 3
+            wrapToPi(candidate[3]);
+            //theta 4
+            candidate[5] += PI/2;
+            wrapToPi(candidate[5]);
+            //theta5
+            candidate[1] -= PI/2;
+            wrapToPi(candidate[1]);
+            //theta6
+            wrapToPi(candidate[2]);
             
             solutions.push_back({candidate[0], candidate[4], candidate[3],
                                  candidate[5], candidate[1], candidate[2]});

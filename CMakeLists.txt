@@ -46,8 +46,8 @@ target_link_libraries(mycobot_kinematics_plugin
 
 
 #add_library(ur_kin src/ur_kin.cpp)
-add_executable(main src/main.cpp)
-target_link_libraries(main mycobot_kin)
+#add_executable(main src/main.cpp)
+#target_link_libraries(main mycobot_kin)
 
 #############
 ## Install ##

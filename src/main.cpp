@@ -1,5 +1,4 @@
 #include <mycobot_kinematics/mycobot_kin.h>
-#include <mycobot_kinematics/ur_kin.h>
 #include <chrono>
 
 

@@ -73,6 +73,17 @@ namespace mycobot_kinematics {
 	using kinematics::KinematicsResult;
 	class MycobotKinematicsPlugin : public kinematics::KinematicsBase {
 		public:
+      // struct for storing and sorting solutions
+      struct SolDist
+      {
+        std::vector<double> value;
+        double dist_from_seed;
+
+        bool operator<(const SolDist& a) const
+        {
+          return dist_from_seed < a.dist_from_seed;
+        }
+      };
 
 			MycobotKinematicsPlugin();
 			////////////////////////////////overwritten methods//////////////////////////////////////////////////////////

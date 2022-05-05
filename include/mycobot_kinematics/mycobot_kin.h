@@ -41,26 +41,11 @@ namespace mycobot_kinematics {
     /**
      * @brief         Wrap angle in radians to [−PI PI)
      * @param angle   angle in radians
-     * @param i       The index i of link i - 1 and link i
      * @return        void
      */
-    void wrapToPi(double& angle, int i);
+    void wrapToPi(double& angle);
 
-    /**
-     * @brief         Wrap angle in radians to [−3/2*PI 1/2*PI)
-     * @param angle   angle in radians
-     * @param i       The index i of link i - 1 and link i
-     * @return        void
-     */
-    void wrapTohalfPi(double& angle, int i);
-
-    /**
-     * @brief         Wrap angle in radians to [−1/2*PI 3/2*PI)
-     * @param angle   angle in radians
-     * @param i       The index i of link i - 1 and link i
-     * @return        void
-     */
-    void wrapToOnehalfPi(double& angle, int i);
+    
 
     /**
      * @brief            Given the one candidate of angles computed in previous steps, compute the angle in current steps
